@@ -7,8 +7,9 @@ on:
 
 env:
   PLATFORMS: linux/arm64
-  SOURCE_REPOSITORY: curlconverter/curlconverter.github.io
-  DOCKERHUB_REPOSITORY: helllord/curlconverter.github.io
+  SOURCE_REPOSITORY: curlconverter/curlconverter
+  DOCKERHUB_REPOSITORY: helllord/curlconverter
+  DOCKERFILE_REPOSITORY: curlconverter/curlconverter.github.io
 
 jobs:
   get-tag:
@@ -26,7 +27,7 @@ jobs:
         id: get-tag
         run: >
           python3 get_tag.py ${{ github.event_name != 'workflow_dispatch' && env.DOCKERHUB_REPOSITORY || '""' }}
-          --gh-commit ${{ env.SOURCE_REPOSITORY }} >> $GITHUB_OUTPUT
+          --gh-tag ${{ env.SOURCE_REPOSITORY }} >> $GITHUB_OUTPUT
 
   build-push:
     needs: get-tag
@@ -36,8 +37,10 @@ jobs:
       - name: Fetch repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.SOURCE_REPOSITORY }}
-          ref: ${{ needs.get-tag.outputs.tag }}
+          repository: ${{ env.DOCKERFILE_REPOSITORY }}
+      - name: Apply patch
+        run: |
+          jq '.dependencies.curlconverter += "#${{ needs.get-tag.outputs.tag }}"' package.json > package.json.tmp && mv package.json.tmp package.json
       - name: Set Docker Hub username
         id: dockerhub-username
         run: echo "username=${DOCKERHUB_REPOSITORY%%/*}" >> $GITHUB_OUTPUT
